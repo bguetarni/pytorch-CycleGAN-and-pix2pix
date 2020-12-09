@@ -1,6 +1,12 @@
 import torch
 from .base_model import BaseModel
 from . import networks
+from collections import OrderedDict
+import numpy as np
+
+
+mean = [0.3852, 0.3761, 0.3258]
+std = [0.0372, 0.0275, 0.0280]
 
 
 class Pix2PixModel(BaseModel):
@@ -113,15 +119,44 @@ class Pix2PixModel(BaseModel):
         self.loss_G = self.loss_G_GAN + self.loss_G_L1
         self.loss_G.backward()
 
-    def optimize_parameters(self):
+    def optimize_parameters(self, update_discriminator):
         self.forward()                   # compute fake images: G(A)
-        # update D
-        self.set_requires_grad(self.netD, True)  # enable backprop for D
-        self.optimizer_D.zero_grad()     # set D's gradients to zero
-        self.backward_D()                # calculate gradients for D
-        self.optimizer_D.step()          # update D's weights
+
+        if update_discriminator:
+            # update D
+            self.set_requires_grad(self.netD, True)  # enable backprop for D
+            self.optimizer_D.zero_grad()     # set D's gradients to zero
+            self.backward_D()                # calculate gradients for D
+            self.optimizer_D.step()          # update D's weights
         # update G
         self.set_requires_grad(self.netD, False)  # D requires no gradients when optimizing G
         self.optimizer_G.zero_grad()        # set G's gradients to zero
         self.backward_G()                   # calculate graidents for G
         self.optimizer_G.step()             # udpate G's weights
+
+    def get_current_visuals(self):
+        visual_ret = OrderedDict()
+        for name in self.visual_names:
+            if isinstance(name, str):
+                img = getattr(self, name)
+                if isinstance(img, torch.Tensor):
+                    img = img.cpu()
+                    if img.requires_grad:
+                        img = img.detach()
+                    img = img.numpy()
+            if len(img.shape) > 3:
+                img = img[0]
+            img = np.squeeze(img)
+            img = np.rollaxis(img, axis=-1)
+            img = np.rollaxis(img, axis=-1)
+            if name[-1] == 'A':
+                out = np.zeros((96, 128*7, 3), dtype='float32')
+                for i in range(7):
+                    out[:, 128*i:128*(i+1)] = img[:, :, 2*3*i:2*3*i+3]
+            else:
+                out = np.zeros((96, 128*6, 3), dtype='float32')
+                for i in range(6):
+                    out[:, 128*i:128*(i+1)] = img[:, :, 3*i:3*(i+1)]
+            out = (out*std + mean) * 255.0
+            visual_ret[name] = np.clip(out, 0, 255)
+        return visual_ret
