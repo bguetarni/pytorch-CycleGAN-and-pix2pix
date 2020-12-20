@@ -3,6 +3,10 @@ import torch.nn as nn
 from torch.nn import init
 import functools
 from torch.optim import lr_scheduler
+import torch.nn.functional as F
+import math
+import ipdb
+import cv2
 
 
 ###############################################################################
@@ -273,6 +277,73 @@ class GANLoss(nn.Module):
             else:
                 loss = prediction.mean()
         return loss
+
+
+class SSIM(nn.Module):
+    def __init__(self, K1=0.01, K2=0.03, L=255, window_size=11, sigma=1):
+        """
+        Implementation of the SSIM indice
+        Arguments:
+            K1: constant associated with luminance comparison
+            K2: constant associated with contrast comparison
+            L: dynamic range of the pixels (e.g. image is 255)
+            window_size: size of the gaussian windows
+
+        See 'Image Quality Assessment: From Error Visibility toStructural Similarity', Z. Wang et al.
+        """
+        self.K1 = K1
+        self.K2 = K2
+        self.L = L
+        self.window_size = window_size
+        self.sigma = sigma
+    
+    def diff(self, x, mu, channels):
+        x = F.unfold(x, self.window_size)
+        x = x.reshape(1, channels, -1, self.window_size**2)
+        mu = mu.reshape(1, channels, -1, 1)
+        mu = mu.repeat(1, 1, 1, self.window_size**2)
+        return x - mu
+
+    def __call__(self, y_pred, y_true, method=1):
+        """
+        Return the SSIM indice between y_true and y_pred
+        The indice is computed through windows and then averaged
+        """
+        channels = y_true.shape[1]
+        # 1D gaussian kernel
+        window = torch.Tensor([math.exp(-(x - self.window_size//2)**2/float(2*self.sigma**2)) for x in range(self.window_size)])
+        window = window/window.sum()  # normalize kernel so that sum is 1
+        window = window.unsqueeze(1)  # transform to column vector
+        window = window.mm(window.t())  # matrix product (n*)x(1*n) -> n*n
+        window = window.float().unsqueeze(0).unsqueeze(0)
+        window = window.expand(channels, 1, self.window_size, self.window_size)  # (batch, 1, n, n)
+
+        # means
+        mu_x = F.conv2d(y_true, window, groups=channels)  # computes mean with gaussian weights
+        mu_y = F.conv2d(y_pred, window, groups=channels)  # computes mean with gaussian weights
+
+        # variances
+        sigma_square_x = F.conv2d(y_true**2, window, groups=channels) - mu_x**2
+        sigma_square_y = F.conv2d(y_pred**2, window, groups=channels) - mu_y**2
+
+        if method == 1:
+            sigma_xy = F.conv2d(y_true * y_pred, window, groups=channels) - mu_x * mu_y
+        else:  # do not use other method, because it returns an index greater than 1
+            window = window.reshape(channels, -1).unsqueeze(1)
+            diff1 = self.diff(y_true, mu_x, channels).reshape(1, channels, -1)
+            diff2 = self.diff(y_pred, mu_y, channels).reshape(1, channels, -1)
+            sigma_xy = F.conv1d(diff1 * diff2, window, groups=channels, stride=self.window_size**2)
+            sigma_xy = sigma_xy.reshape(1, channels, mu_x.shape[-2], mu_x.shape[-1])
+
+        # constants
+        C1 = (self.K1*self.L)**2
+        C2 = (self.K2*self.L)**2
+
+        # SSIM
+        numerator = (2*mu_x*mu_y + C1)*(2*sigma_xy + C2)
+        denominator = (mu_x**2 + mu_y**2 + C1)*(sigma_square_x + sigma_square_y + C2)
+        ssim = numerator/denominator
+        return ssim.mean()
 
 
 def cal_gradient_penalty(netD, real_data, fake_data, device, type='mixed', constant=1.0, lambda_gp=10.0):
