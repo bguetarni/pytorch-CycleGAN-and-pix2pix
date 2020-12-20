@@ -5,7 +5,6 @@ import functools
 from torch.optim import lr_scheduler
 import torch.nn.functional as F
 import math
-import ipdb
 import cv2
 
 
@@ -311,7 +310,7 @@ class SSIM(nn.Module):
         """
         channels = y_true.shape[1]
         # 1D gaussian kernel
-        window = torch.Tensor([math.exp(-(x - self.window_size//2)**2/float(2*self.sigma**2)) for x in range(self.window_size)])
+        window = torch.cuda.FloatTensor([math.exp(-(x - self.window_size//2)**2/float(2*self.sigma**2)) for x in range(self.window_size)])
         window = window/window.sum()  # normalize kernel so that sum is 1
         window = window.unsqueeze(1)  # transform to column vector
         window = window.mm(window.t())  # matrix product (n*)x(1*n) -> n*n
