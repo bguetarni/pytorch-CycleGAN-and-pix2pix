@@ -5,7 +5,7 @@ import ntpath
 import time
 from . import util, html
 from subprocess import Popen, PIPE
-
+import ipdb
 
 if sys.version_info[0] == 2:
     VisdomExceptionBase = Exception

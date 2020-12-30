@@ -3,7 +3,7 @@ from .base_model import BaseModel
 from . import networks
 from collections import OrderedDict
 import numpy as np
-
+import ipdb
 
 mean = [0.3852, 0.3761, 0.3258]
 std = [0.0372, 0.0275, 0.0280]
@@ -117,12 +117,12 @@ class Pix2PixModel(BaseModel):
         self.loss_G_GAN = self.criterionGAN(pred_fake, True)
         # Second, G(A) = B
         self.loss_G_L1 = self.criterionL1(self.fake_B, self.real_B) * self.opt.lambda_L1
-        self.loss_G_SSIM = self.criterionSSIM(self.fake_B, self.real_B) * self.opt.lambda_SSIM
+        self.loss_G_SSIM = 1 - self.criterionSSIM(self.fake_B, self.real_B) * self.opt.lambda_SSIM
         # combine loss and calculate gradients
         self.loss_G = self.loss_G_GAN + self.loss_G_L1 + self.loss_G_SSIM
         self.loss_G.backward()
 
-    def optimize_parameters(self, update_discriminator):
+    def optimize_parameters(self, update_discriminator=True):
         self.forward()                   # compute fake images: G(A)
 
         if update_discriminator:
@@ -136,3 +136,31 @@ class Pix2PixModel(BaseModel):
         self.optimizer_G.zero_grad()        # set G's gradients to zero
         self.backward_G()                   # calculate graidents for G
         self.optimizer_G.step()             # udpate G's weights
+
+    def get_current_visuals(self):
+        visual_ret = OrderedDict()
+        for name in self.visual_names:
+            if isinstance(name, str):
+                img = getattr(self, name)
+                if isinstance(img, torch.Tensor):
+                    img = img.cpu()
+                    if img.requires_grad:
+                        img = img.detach()
+                    img = img.numpy()
+            if len(img.shape) > 3:
+                img = img[0]
+            img = np.squeeze(img)
+            img = img.transpose(1, 2, 0)
+            n = img.shape[-1]//3
+            if name[-1] == 'A':  # blurred images
+                out = np.zeros((96, 128*n, 3), dtype='float32')
+                for i in range(n):
+                    out[:, 128*i:128*(i+1)] = img[:, :, 3*i:3*(i+1)]
+                out = (out*std + mean) * 255.0
+            else:  # panorama
+                out = np.zeros((96, 128*n, 3), dtype='float32')
+                for i in range(n):
+                    out[:, 128*i:128*(i+1)] = img[:, :, 3*i:3*(i+1)]
+                out = (out + 1)/2.0 * 255.0
+            visual_ret[name] = np.clip(out, 0, 255)
+        return visual_ret
