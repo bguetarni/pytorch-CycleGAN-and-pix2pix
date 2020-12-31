@@ -5,7 +5,6 @@ import ntpath
 import time
 from . import util, html
 from subprocess import Popen, PIPE
-import ipdb
 
 if sys.version_info[0] == 2:
     VisdomExceptionBase = Exception
@@ -65,6 +64,7 @@ class Visualizer():
         self.win_size = opt.display_winsize
         self.name = opt.name
         self.port = opt.display_port
+        self.env = opt.display_env
         self.saved = False
         if self.display_id > 0:  # connect to a visdom server given <display_port> and <display_server>
             import visdom
@@ -219,3 +219,6 @@ class Visualizer():
         print(message)  # print the message
         with open(self.log_name, "a") as log_file:
             log_file.write('%s\n' % message)  # save the message
+
+    def save(self):
+        self.vis.save([self.env])

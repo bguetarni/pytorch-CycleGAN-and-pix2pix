@@ -3,7 +3,6 @@ from .base_model import BaseModel
 from . import networks
 from collections import OrderedDict
 import numpy as np
-import ipdb
 
 mean = [0.3852, 0.3761, 0.3258]
 std = [0.0372, 0.0275, 0.0280]
