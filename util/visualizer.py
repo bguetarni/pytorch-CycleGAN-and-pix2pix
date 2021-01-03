@@ -84,6 +84,9 @@ class Visualizer():
             now = time.strftime("%c")
             log_file.write('================ Training Loss (%s) ================\n' % now)
 
+        # display options in server
+        self.print_options(opt)
+
     def reset(self):
         """Reset the self.saved status"""
         self.saved = False
@@ -222,3 +225,7 @@ class Visualizer():
 
     def save(self):
         self.vis.save([self.env])
+
+    def print_options(self, opt):
+        for k, v in sorted(vars(opt).items()):
+            self.vis.text('{:>25}: {:<30}'.format(str(k), str(v)), win='options')
