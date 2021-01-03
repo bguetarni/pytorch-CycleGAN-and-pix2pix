@@ -5,7 +5,6 @@ import functools
 from torch.optim import lr_scheduler
 import torch.nn.functional as F
 import math
-import cv2
 
 
 ###############################################################################
@@ -295,7 +294,7 @@ class SSIM(nn.Module):
         self.L = L
         self.window_size = window_size
         self.sigma = sigma
-    
+
     def diff(self, x, mu, channels):
         x = F.unfold(x, self.window_size)
         x = x.reshape(1, channels, -1, self.window_size**2)

@@ -116,7 +116,7 @@ class Pix2PixModel(BaseModel):
         self.loss_G_GAN = self.criterionGAN(pred_fake, True)
         # Second, G(A) = B
         self.loss_G_L1 = self.criterionL1(self.fake_B, self.real_B) * self.opt.lambda_L1
-        self.loss_G_SSIM = 1 - self.criterionSSIM(self.fake_B, self.real_B) * self.opt.lambda_SSIM
+        self.loss_G_SSIM = (1 - self.criterionSSIM(self.fake_B, self.real_B)) * self.opt.lambda_SSIM  # we want to make SSIM equal to 1
         # combine loss and calculate gradients
         self.loss_G = self.loss_G_GAN + self.loss_G_L1 + self.loss_G_SSIM
         self.loss_G.backward()
