@@ -141,7 +141,7 @@ class Pix2PixModel(BaseModel):
         for name in self.visual_names:
             if isinstance(name, str):
                 img = getattr(self, name)
-                if isinstance(img, torch.Tensor):
+                if isinstance(img, torch.Tensor):  # convert to ndarray
                     img = img.cpu()
                     if img.requires_grad:
                         img = img.detach()
@@ -149,17 +149,18 @@ class Pix2PixModel(BaseModel):
             if len(img.shape) > 3:
                 img = img[0]
             img = np.squeeze(img)
-            img = img.transpose(1, 2, 0)
-            n = img.shape[-1]//3
+            img = img.transpose(1, 2, 0)  # CHW -> HWC
+            n = img.shape[-1]//3  # number of concatenated RGB images
+
+            # reconstruct the image
+            out = np.zeros((96, 128*n, 3), dtype='float32')
+            for i in range(n):
+                out[:, 128*i:128*(i+1)] = img[:, :, 3*i:3*(i+1)]
+
+            # scale to [0,255]
             if name[-1] == 'A':  # blurred images
-                out = np.zeros((96, 128*n, 3), dtype='float32')
-                for i in range(n):
-                    out[:, 128*i:128*(i+1)] = img[:, :, 3*i:3*(i+1)]
                 out = (out*std + mean) * 255.0
             else:  # panorama
-                out = np.zeros((96, 128*n, 3), dtype='float32')
-                for i in range(n):
-                    out[:, 128*i:128*(i+1)] = img[:, :, 3*i:3*(i+1)]
                 out = (out + 1)/2.0 * 255.0
-            visual_ret[name] = np.clip(out, 0, 255)
+            visual_ret[name] = out.astype('uint8')
         return visual_ret
