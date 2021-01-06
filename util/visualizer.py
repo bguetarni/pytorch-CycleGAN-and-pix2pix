@@ -227,5 +227,6 @@ class Visualizer():
         self.vis.save([self.env])
 
     def print_options(self, opt):
+        self.vis.text('', win='options', opts={'title': 'Options'})
         for k, v in sorted(vars(opt).items()):
-            self.vis.text('{:>25}: {:<30}'.format(str(k), str(v)), win='options')
+            self.vis.text('{:>25}: {:<30}'.format(str(k), str(v)), win='options', append=True)

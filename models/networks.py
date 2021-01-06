@@ -295,17 +295,10 @@ class SSIM(nn.Module):
         self.window_size = window_size
         self.sigma = sigma
 
-    def diff(self, x, mu, channels):
-        x = F.unfold(x, self.window_size)
-        x = x.reshape(1, channels, -1, self.window_size**2)
-        mu = mu.reshape(1, channels, -1, 1)
-        mu = mu.repeat(1, 1, 1, self.window_size**2)
-        return x - mu
-
-    def __call__(self, y_pred, y_true, method=1):
+    def __call__(self, y_pred, y_true):
         """
-        Return the SSIM indice between y_true and y_pred
-        The indice is computed through windows and then averaged
+        Return the SSIM indice between y_true and y_pred; they must be non-negative
+        The indice is computed through windows and then averaged.
         """
         channels = y_true.shape[1]
         # 1D gaussian kernel
@@ -324,14 +317,8 @@ class SSIM(nn.Module):
         sigma_square_x = F.conv2d(y_true**2, window, groups=channels) - mu_x**2
         sigma_square_y = F.conv2d(y_pred**2, window, groups=channels) - mu_y**2
 
-        if method == 1:
-            sigma_xy = F.conv2d(y_true * y_pred, window, groups=channels) - mu_x * mu_y
-        else:  # do not use other method, because it returns an index greater than 1
-            window = window.reshape(channels, -1).unsqueeze(1)
-            diff1 = self.diff(y_true, mu_x, channels).reshape(1, channels, -1)
-            diff2 = self.diff(y_pred, mu_y, channels).reshape(1, channels, -1)
-            sigma_xy = F.conv1d(diff1 * diff2, window, groups=channels, stride=self.window_size**2)
-            sigma_xy = sigma_xy.reshape(1, channels, mu_x.shape[-2], mu_x.shape[-1])
+        # correlation coefficient
+        sigma_xy = F.conv2d(y_true * y_pred, window, groups=channels) - mu_x * mu_y
 
         # constants
         C1 = (self.K1*self.L)**2
