@@ -17,4 +17,4 @@ To see more intermediate results, check out `./checkpoints/facades_pix2pix/web/i
 | 100 | ![](./imgs/intermediate_results/epoch100_real_A.png) | ![](./imgs/intermediate_results/epoch100_real_B.png) | ![](./imgs/intermediate_results/epoch100_fake_B.png) |
 | 150 | ![](./imgs/intermediate_results/epoch150_real_A.png) | ![](./imgs/intermediate_results/epoch150_real_B.png) | ![](./imgs/intermediate_results/epoch150_fake_B.png) |
 
-To see the last training curves copy the files from the **visdom/** folder to **~/.visdom/**. Then run `visdom -en_path ~/.visdom/`.
+To see the last training curves copy the files from the **visdom/** folder to **~/.visdom/**. Then run `visdom -env_path ~/.visdom/`.
