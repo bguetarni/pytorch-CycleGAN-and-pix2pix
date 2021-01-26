@@ -3,9 +3,8 @@ from .base_model import BaseModel
 from . import networks
 from collections import OrderedDict
 import numpy as np
-
-mean = [0.3852, 0.3761, 0.3258]
-std = [0.0372, 0.0275, 0.0280]
+import os
+import yaml
 
 
 class Pix2PixModel(BaseModel):
@@ -137,6 +136,9 @@ class Pix2PixModel(BaseModel):
         self.optimizer_G.step()             # udpate G's weights
 
     def get_current_visuals(self):
+        mean = [0.3852, 0.3761, 0.3258]
+        std = [0.0372, 0.0275, 0.0280]
+
         visual_ret = OrderedDict()
         for name in self.visual_names:
             if isinstance(name, str):
@@ -164,3 +166,19 @@ class Pix2PixModel(BaseModel):
                 out = (out + 1)/2.0 * 255.0
             visual_ret[name] = out.astype('uint8')
         return visual_ret
+
+    def load_netG_first_conv(self, path):
+        """
+            Copy kernel weights of the first Conv2D layer of a pre-trained model.
+            Kernels must have the same shape except for channels.
+            Both models must have the same generator architecture.
+
+            Args:
+                (str) path: path to the pre-trained weights to use as init
+        """
+        assert 'options.yml' in os.listdir(path), 'options.yml file not present in directory; cannot load pre-trained model.'
+        with open(path + 'options.yml', 'r') as f:
+            opt = yaml.load(f, Loader=yaml.Loader)
+        source = Pix2PixModel(opt)
+        source.load_networks('latest')
+        # TODO: assign weights

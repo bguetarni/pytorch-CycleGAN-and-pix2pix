@@ -23,10 +23,16 @@ from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
 from util.visualizer import Visualizer
+import os
+import yaml
 
 
 if __name__ == '__main__':
     opt = TrainOptions().parse()   # get training options
+    save_path = os.path.join(opt.checkpoints_dir, opt.name)
+    save_path = os.path.join(save_path, 'options.yml')
+    with open(save_path, 'w') as f:
+        yaml.dump(opt, f)
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
     dataset_size = len(dataset)    # get the number of images in the dataset.
     print('The number of training images = %d' % dataset_size)
